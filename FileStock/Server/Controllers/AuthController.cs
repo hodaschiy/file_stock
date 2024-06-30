@@ -24,7 +24,7 @@ namespace Server.Controllers
         }
 
         [HttpGet]
-        public string Handshake(string? Login = null)
+        public string Handshake(string? Login = null) //сделать нормальный проктокол, после авторизации по паролю TODO : клиент генерит ключ => передает серверу PublicKey => сервер генерит токен, шифрует полученным ключем => отправляет клиенту
         {
             var key = _crypt.GetKey();
             var usr = _context.User.Where(usr => usr.Name == Login).FirstOrDefault();
@@ -40,7 +40,7 @@ namespace Server.Controllers
         }
 
         [HttpPost]
-        public bool Auth(AuthRequest request)
+        public bool Auth(AuthRequest request) 
         {
             User usr = _context.User.Where(usr => usr.Name == request.Login).FirstOrDefault();
             if (usr == null)
@@ -51,7 +51,7 @@ namespace Server.Controllers
             byte[] pw = Convert.FromBase64String(request.Password);
             if (Encoding.UTF8.GetString(_crypt.DecryptData(pw, usr.PublicKey)) == Encoding.UTF8.GetString(_crypt.DecryptData(usr.Password))) 
             {
-                usr.Token = Encoding.UTF8.GetString(Encoding.Default.GetBytes(DateTime.UtcNow.Date.ToString())); //абсолютная уверенность, что это будет UTF8
+                usr.Token = Encoding.UTF8.GetString(Encoding.Default.GetBytes(DateTime.UtcNow.Date.ToString()));
                 _context.Update(usr);
                 _context.SaveChanges();
                 return true;

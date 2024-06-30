@@ -119,7 +119,8 @@ namespace Server.Controllers
             return _context.FileModel.Any(e => e.Id == id);
         }
 
-        private bool IsAuthorized(Req req, out User? usr, out ActionResult? res)
+        // TODO : Класс-сервис авторизации, которым могут пользоваться контроллдлеры (AuthController и FileModelController)
+        private bool IsAuthorized(Req req, out User? usr, out ActionResult? res) //TODO : токен дествует только некоторе время, при просрчивании просит клиента авторизоваться заново
         {
             usr = _context.User.Where(usr => usr.Name == req.Login).FirstOrDefault();
 
