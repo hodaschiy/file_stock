@@ -1,0 +1,57 @@
+﻿<Window x:Class="Client.FileStockWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:Client"
+        mc:Ignorable="d"
+        Title="FileStockWindow" Height="450" Width="800">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+        <Label x:Name ="HeaderLabel" Content="Файлы пользователя App.usr.Login" Grid.ColumnSpan="2"/>
+        <Button Content="Add File" Grid.Column="4" Grid.Row="4" Click="Button_AddFile_Click"/>
+
+        <StackPanel Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="3" Grid.RowSpan="3">
+            <TextBlock TextWrapping="Wrap" Margin="5">Прокуртка становится доступна при необходимости</TextBlock>
+            <ScrollViewer>
+                <ListView x:Name="ListOfFiles">
+                    <ListView.View>
+                        <GridView>
+                            <GridViewColumn DisplayMemberBinding="{Binding Name}" Width="NaN">Название</GridViewColumn>
+                            <GridViewColumn DisplayMemberBinding="{Binding Size}" Width="NaN">Размер</GridViewColumn>
+                            <GridViewColumn DisplayMemberBinding="{Binding FileExt}" Width="NaN">Расширение</GridViewColumn>
+                            <GridViewColumn Width="NaN">
+                                <GridViewColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <Button Name="Download" Click="Button_Download_Click" Content="Скачать" DataContext="{Binding Path=Id}"/>
+                                    </DataTemplate>
+                                </GridViewColumn.CellTemplate>
+                            </GridViewColumn>
+                            <GridViewColumn Width="NaN">
+                                <GridViewColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <Button Name="Download" Click="Button_Delete_Click" Content="Удалить" DataContext="{Binding Path=Id}"/>
+                                    </DataTemplate>
+                                </GridViewColumn.CellTemplate>
+                            </GridViewColumn>
+                        </GridView>
+                    </ListView.View>
+                </ListView>
+            </ScrollViewer>
+        </StackPanel>
+    </Grid>
+</Window>

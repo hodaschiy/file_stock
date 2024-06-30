@@ -1,0 +1,8 @@
+@Server_HostAddress = http://localhost:5139
+
+GET {{Server_HostAddress}}/
+Accept: application/json
+
+###
+
+Post {{Server_HostAddress}/Auth}

@@ -1,0 +1,38 @@
+﻿<Window x:Class="Client.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:Client"
+        mc:Ignorable="d"
+        Title="MainWindow" Height="560" Width="780">
+    <Grid Margin="10" IsEnabled="True">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+
+        <Label Content="Хранилище файлов" Grid.Row="1" Grid.Column="2" HorizontalAlignment="Center"/>
+        <Label Name="ThisBox" Content="Авторизируйтесь, пожалуйста  " Grid.Row="2" Grid.Column="2" HorizontalAlignment="Center"/>
+        <TextBox x:Name="Login" Grid.Row="3" Grid.Column="2" Text="admin"/>
+        <PasswordBox x:Name="Password" Grid.Row="4" Grid.Column="2" Password="admin"/>
+        <Button x:Name="Submit" Grid.Row="5" Grid.Column="2" Content="Submit" Click="ButtonSubmit_Click"/>
+        <Button x:Name="Register" Grid.Row="7" Grid.Column="2" Content="Register" Click="ButtonRegister_Click"/>
+    </Grid>
+</Window>
+
