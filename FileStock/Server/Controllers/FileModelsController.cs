@@ -64,7 +64,7 @@ namespace Server.Controllers
                 return res!;
             }
 
-            if (_context.FileModel.Any(x => x.Name == req.Name))
+            if (_context.FileModel.Any(x => x.Name == req.Name && x.UserID == usr.Id))
             {
                 return BadRequest("File almost exists");
             }

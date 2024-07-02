@@ -31,7 +31,7 @@ namespace Client.Controls
                 JsonContent jsonContent = JsonContent.Create(new { Login = App.usr.Name, Token = App.usr.Token, Name = dlg.SafeFileName, Data = File.ReadAllBytes(dlg.FileName) });
 
                 var res = await App.http.PostAsync("/FileModels/Add", jsonContent);
-                var fl = res.Content.ReadFromJsonAsync<FileModel>().Result;
+                var fl = await res.Content.ReadFromJsonAsync<FileModel>();
                 return fl;
             }
              else
