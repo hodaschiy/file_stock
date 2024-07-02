@@ -40,7 +40,7 @@ namespace Client.Controls
         {
             Handshake(null);
 
-            JsonContent jsonContent = JsonContent.Create(new { Login = Login, Password = Convert.ToBase64String(_rsa.Encrypt(Encoding.UTF8.GetBytes(Password), false)) });
+            JsonContent jsonContent = JsonContent.Create(new { Login = Login, Password = Convert.ToBase64String(_rsa.Encrypt(Encoding.UTF8.GetBytes(Password), false)), PublicKey = _rsa.ToXmlString(false) });
 
             var response = await App.http.PostAsync("/Register", jsonContent);//TODO обработать исключение "ключ не существует"
             var IsRegistered = await response.Content.ReadAsStringAsync();
