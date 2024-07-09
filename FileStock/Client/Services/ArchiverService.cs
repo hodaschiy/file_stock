@@ -46,7 +46,7 @@ namespace Client
                     output = outstream.ToArray();
                     break;
             }
-            _logger.Info("Время сжатия: " + (dateTime - DateTime.Now).TotalSeconds.ToString());
+            _logger.Info("Время сжатия: " + (DateTime.Now - dateTime).TotalMilliseconds.ToString()+" миллисекунд");
             return output;
         }
 
