@@ -2,14 +2,15 @@
 using Microsoft.Extensions.DependencyInjection;
 using System.Security.Cryptography;
 using Swashbuckle.AspNetCore.SwaggerGen;
+using NLog;
 
 namespace Server.Services
 {
     public interface ICryptService
     {
-        public byte[]? EncryptData(byte[] data, string? PublicKey = null);
-        public byte[]? DecryptData(byte[] data, string? PublicKey = null);
-        public string GetKey();
+        public byte[]? EncryptData(byte[] data, string? PublicKey = null, bool userKey = true);
+        public byte[]? DecryptData(byte[] data, string? PublicKey = null, bool userKey = false);
+        public string GetKey(string clientPublicKey);
     }
 
     public interface IKeyProvider
@@ -20,19 +21,29 @@ namespace Server.Services
     public class CryptService : ICryptService
     {
         private readonly IKeyProvider _keyProvider;
+        private readonly ILogger<CryptService> _logger;
 
         private RSACryptoServiceProvider DatabaseKey { get => _keyProvider.GetKey(KeyType.DB); }
-        private List<RSACryptoServiceProvider> UserKeys = new List<RSACryptoServiceProvider>();
+        private Dictionary<RSACryptoServiceProvider, RSACryptoServiceProvider> UserKeys = new Dictionary<RSACryptoServiceProvider, RSACryptoServiceProvider>(); //user generated key - server generated key pair
 
-        public CryptService(IKeyProvider keyProvider) { _keyProvider = keyProvider; /*UserKeys.Add(_keyProvider.GetKey(KeyType.Client));*/ }
-        public byte[]? EncryptData(byte[] data, string? PublicKey = null) 
+        public CryptService(IKeyProvider keyProvider, ILogger<CryptService> logger) { _keyProvider = keyProvider; _logger = logger; /*UserKeys.Add(_keyProvider.GetKey(KeyType.Client));*/ }
+        public byte[]? EncryptData(byte[] data, string? PublicKey = null, bool userKey = false) 
         {
             if (PublicKey == null)
             {
                 return DatabaseKey.Encrypt(data, false);
             }
+            var keyPair = UserKeys.Where(k => k.Key.ToXmlString(false) == PublicKey).FirstOrDefault();
+            RSACryptoServiceProvider key;
+            if (userKey)
+            {
+                key = keyPair.Key;
+            }
+            else
+            {
+                key = keyPair.Value;
+            }
 
-            RSACryptoServiceProvider? key = UserKeys.Where(k => k.ToXmlString(false) == PublicKey).FirstOrDefault();
             if (key == null)
             {
                 throw new KeyIsNotExists();
@@ -45,7 +56,7 @@ namespace Server.Services
 
             return null;
         }
-        public byte[]? DecryptData(byte[] data, string? PublicKey = null)
+        public byte[]? DecryptData(byte[] data, string? PublicKey = null, bool userKey = false)
         {
             try
             {
@@ -56,9 +67,19 @@ namespace Server.Services
             }
             catch
             {
-                throw new IsNotCorrectKey(); // ключ базы не подходит
+                throw new IsNotCorrectKey("Ключ базы данных не подходит"); // ключ базы не подходит
             }
-            RSACryptoServiceProvider? key = UserKeys.Where(k => k.ToXmlString(false) == PublicKey).FirstOrDefault();
+            var keyPair = UserKeys.Where(k => k.Key.ToXmlString(false) == PublicKey).FirstOrDefault();
+            RSACryptoServiceProvider key;
+            if (userKey)
+            {
+                key = keyPair.Key;
+            }
+            else
+            {
+                key = keyPair.Value;
+            }
+
             if (key == null)
             {
                 throw new KeyIsNotExists();
@@ -70,24 +91,37 @@ namespace Server.Services
                 {
                     return key.Decrypt(data, false);
                 }
-                catch
+                catch (Exception ex)
                 {
-                    throw new IsNotCorrectKey();
+                    if (!key.PublicOnly) 
+                        throw new IsNotCorrectKey(ex.Message);
+                    else
+                        throw new KeyIsNotExists(ex.Message);
                 }
             }
             
             return null;
         }
-        public string GetKey() 
+        public string GetKey(string clientPublicKey) 
         {
-            var key = _keyProvider.GetKey(KeyType.Client);
-            if (!UserKeys.Contains(key))
+            RSACryptoServiceProvider userKey = new RSACryptoServiceProvider();
+            try
             {
-                UserKeys.Add(key);
+                userKey.FromXmlString(clientPublicKey);
             }
-            return key.ToXmlString(false);
-        }
+            catch (Exception ex)
+            {
+                throw new IsNotCorrectKey(ex.Message);
+            }
 
+            if (!UserKeys.Select(x => x.Key).ToList().Contains(userKey))
+            {
+                var key = _keyProvider.GetKey(KeyType.Client);
+                UserKeys.Add(userKey, key);
+            }
+
+            return UserKeys[userKey].ToXmlString(false);
+        }
     }
 
     public class InMemoryKeyProvider : IKeyProvider // реализация статических ключей
@@ -127,6 +161,7 @@ namespace Server.Services
         DB = 1
     }
 
-    public class KeyIsNotExists : Exception { }
-    public class IsNotCorrectKey : Exception { }
+    public class KeyIsNotExists : Exception { public KeyIsNotExists() : base() { } public KeyIsNotExists(string? message) : base(message) { } }
+    public class IsNotCorrectKey : Exception { public IsNotCorrectKey() : base() { } public IsNotCorrectKey(string? message) : base(message) { } }
+    public class NotImplimented : Exception { public NotImplimented() : base() { } public NotImplimented(string? message) : base(message) { } }
 }

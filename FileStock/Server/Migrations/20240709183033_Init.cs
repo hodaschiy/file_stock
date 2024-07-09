@@ -35,6 +35,7 @@ namespace Server.Migrations
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     Data = table.Column<byte[]>(type: "bytea", nullable: false),
                     Name = table.Column<string>(type: "text", nullable: false),
+                    CompressAlg = table.Column<int>(type: "integer", nullable: false),
                     UserID = table.Column<int>(type: "integer", nullable: false)
                 },
                 constraints: table =>

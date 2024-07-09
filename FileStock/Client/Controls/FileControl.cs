@@ -9,14 +9,26 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Configuration;
 using System.Windows.Shapes;
+using NLog;
+using System.Net.Http;
 
 namespace Client.Controls
 {
     public class FileControl
     {
+        private static Logger _logger = LogManager.GetCurrentClassLogger();
         public List<FileModel> GetUserFiles()
         {
-            return App.http.GetFromJsonAsAsyncEnumerable<FileModel>($"/FileModels/Get?Login={App.usr.Name}&Token={App.usr.Token}").ToListAsync<FileModel>().Result;
+            try
+            {
+                return App.http.GetFromJsonAsAsyncEnumerable<FileModel>($"/FileModels/Get?Login={App.usr.Name}&Token={App.usr.Token}").ToListAsync<FileModel>().Result;
+            }
+            catch (Exception ex)
+            {
+                _logger.Error(ex);
+                return new List<FileModel>();
+            }
+
         }
         public async Task<FileModel> Add() 
         {
@@ -25,23 +37,42 @@ namespace Client.Controls
 
             bool? result = dlg.ShowDialog();
 
-            // Process open file dialog box results
             if (result == true)
             {
-                JsonContent jsonContent = JsonContent.Create(new { Login = App.usr.Name, Token = App.usr.Token, Name = dlg.SafeFileName, Data = File.ReadAllBytes(dlg.FileName) });
+                try
+                {
+                    CompressAlg alg = CompressAlg.GZip;
+                    _logger.Info($"Start add file: {dlg.SafeFileName}");
+                    StreamContent streamContent = new StreamContent(new MemoryStream(App.archiver.Compress(File.OpenRead(dlg.FileName), alg)));
+                    StringContent stringContent = new StringContent(((int)alg).ToString());
+                    MultipartFormDataContent form = new MultipartFormDataContent();
+                    form.Add(streamContent, "First", dlg.SafeFileName);
+                    form.Add(stringContent, "CompressAlg");
 
-                var res = await App.http.PostAsync("/FileModels/Add", jsonContent);
-                var fl = await res.Content.ReadFromJsonAsync<FileModel>();
-                return fl;
+                    var res = await App.http.PostAsync("/FileModels/Add", form);
+                    var fl = await res.Content.ReadFromJsonAsync<FileModel>();
+                    if (fl == FileModel.Empty)
+                    {
+                        _logger.Error("File not exists");
+                        return null;
+                    }
+                    _logger.Info($"Add file: FileId: {fl.Id}; FileName: {fl.Name}; FileSize: {fl.Size}; CompressionAlghoritm: {fl.CompressAlg}");
+                    return fl;
+                }
+                catch (Exception ex)
+                {
+                    _logger.Error(ex);
+                    return null;
+                }
             }
-             else
-            {
+            else
+            { 
                 return null;
             }
         }
         public async Task<bool> Remove(int id)
         {
-            JsonContent jsonContent = JsonContent.Create(new { Login = App.usr.Name, Token = App.usr.Token, Id = id});
+            JsonContent jsonContent = JsonContent.Create(new { Id = id});
             var res = await App.http.PostAsync("/FileModels/Delete", jsonContent); 
             var IsDeleted = await res.Content.ReadFromJsonAsync<bool>();
             return IsDeleted;
@@ -53,15 +84,27 @@ namespace Client.Controls
             System.Windows.Forms.DialogResult result = dialog.ShowDialog();
             string path = dialog.SelectedPath;
 
-            JsonContent jsonContent = JsonContent.Create(new { Login = App.usr.Name, Token = App.usr.Token, Id = savingFile.Id });
-            var res = await App.http.PostAsync("/FileModels/Download", jsonContent);
-            var stream = await res.Content.ReadAsStreamAsync();
-            FileStream fl = File.Create(path+'/'+savingFile.Name);
-            stream.CopyTo(fl);
-            stream.Close();
-            fl.Close();
+            if (path != null && path != String.Empty)
+            {
+                try
+                {
+                    JsonContent jsonContent = JsonContent.Create(new { Id = savingFile.Id });
+                    var res = await App.http.PostAsync("/FileModels/Download", jsonContent);
+                    byte[] data = App.archiver.Decompress(await res.Content.ReadAsStreamAsync(), savingFile.CompressAlg);
+                    File.WriteAllBytes(path + '/' + savingFile.Name, data);
 
-            return true;
+                    return true;
+                }
+                catch (Exception ex) 
+                {
+                    _logger.Error(ex);
+                    return false;
+                }
+            }
+            else 
+            {
+                return false;
+            }
         }
     }
 }

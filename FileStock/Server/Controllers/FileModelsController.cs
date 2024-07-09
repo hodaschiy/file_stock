@@ -9,42 +9,41 @@ using Microsoft.AspNetCore.Http;
 using System.Net.Http.Headers;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.VisualStudio.Web.CodeGenerators.Mvc.Templates.BlazorIdentity.Pages;
-using NuGet.Common;
 using Server.Data;
 using Server.Models;
 using Server.Services;
 using static Server.Controllers.FileModelsController;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.CodeAnalysis.Elfie.Serialization;
+using Microsoft.AspNetCore.Http.Extensions;
 
 namespace Server.Controllers
 {
+    [Authorize]
     [Route("[controller]")]
     [ApiController]
     public class FileModelsController : ControllerBase
     {
         private readonly ServerContext _context;
         private readonly ICryptService _crypt;
-        private readonly IArchiverService _archiver;
+        //private readonly IArchiverService _archiver;
+        private readonly ILogger<FileModelsController> _logger;
 
-        public FileModelsController(ServerContext context, ICryptService crypt, IArchiverService archiver)
+        public FileModelsController(ServerContext context, ICryptService crypt, /*IArchiverService archiver,*/ ILogger<FileModelsController> logger)
         {
             _context = context;
             _crypt = crypt;
-            _archiver = archiver;
+            //     _archiver = archiver;
+            _logger = logger;
         }
-
+        
         // GET: /FileModels/Get
         [HttpGet("Get")]
-        public async Task<ActionResult<List<FileInfoModel>>> GetFileModel(string Login, string Token)
+        public async Task<ActionResult<List<FileInfoModel>>> GetFileModel()
         {
-            User? usr;
-            ActionResult? res;
-            if (!IsAuthorized(new Req { Login = Login, Token = Token}, out usr, out res))
-            {
-                return res!;
-            }
-
-            var fileModelList = _context.FileModel.Where(fl => fl.UserID == usr.Id).Select(fl => new FileInfoModel { Id = fl.Id, Name = fl.Name, Size = fl.Size, FileExt = fl.FileExt}).ToList();
+            string name = HttpContext.User.Claims.Where(x => x.Subject.IsAuthenticated).FirstOrDefault().Value;
+            User usr = _context.User.Where(u => u.Name == name).FirstOrDefault();
+            var fileModelList = _context.FileModel.Where(fl => fl.UserID == usr.Id).Select(fl => new FileInfoModel { Id = fl.Id, Name = fl.Name, Size = fl.Size, FileExt = fl.FileExt, CompressAlg = fl.CompressAlg}).ToList();
 
             if (fileModelList == null)
             {
@@ -55,25 +54,29 @@ namespace Server.Controllers
         }
         // POST: /FileModels/Add
         [HttpPost("Add")]
-        public async Task<ActionResult<FileModel>> Add(AddReq req)
+        public async Task<ActionResult<FileModel>> Add()
         {
-            User? usr;
-            ActionResult? res;
-            if (!IsAuthorized(req, out usr, out res))
-            {
-                return res!;
-            }
-
-            if (_context.FileModel.Any(x => x.Name == req.Name && x.UserID == usr.Id))
+            var x = HttpContext.Request.Form;
+            CompressAlg compressAlg = (CompressAlg)Int32.Parse(HttpContext.Request.Form["CompressAlg"]);
+            IFormFile req = HttpContext.Request.Form.Files["First"];
+            string name = HttpContext.User.Claims.Where(x => x.Subject.IsAuthenticated).FirstOrDefault().Value;
+            User usr = _context.User.Where(u => u.Name == name).FirstOrDefault();
+            
+            if (_context.FileModel.Any(x => x.Name == req.FileName && x.UserID == usr.Id))
             {
                 return BadRequest("File almost exists");
             }
-            req.Data = _archiver.Compress(req.Data);
+            //req.Data = _archiver.Compress(req.Data);
+            byte[] data;
+            using (BinaryReader br = new BinaryReader(req.OpenReadStream()))
+            {
+                data = br.ReadBytes((int)req.Length);
+            }
 
-            _context.FileModel.Add(new FileModel() { Data = req.Data, Name = req.Name, User = usr });
+            _context.FileModel.Add(new FileModel() { Data = data, Name = req.FileName, User = usr, CompressAlg = compressAlg });
             _context.SaveChanges();
 
-            FileModel newfl = _context.FileModel.Where(x => x.UserID == usr.Id && x.Name == req.Name && x.Data == req.Data).OrderByDescending(x => x.Id).First(); //Id создается в базе данных, поэтому надо сходить
+            FileModel newfl = _context.FileModel.Where(x => x.UserID == usr.Id && x.Name == req.FileName).OrderByDescending(x => x.Id).First(); //Id создается в базе данных, поэтому надо сходить
 
             return Ok(newfl);
         }
@@ -82,21 +85,21 @@ namespace Server.Controllers
         [HttpPost("Delete")]
         public async Task<IActionResult> DeleteFileModel(DeleteReq req)
         {
-            User? usr;
-            ActionResult? res;
-            if (!IsAuthorized(req, out usr, out res))
-            {
-                return res!;
-            }
-
-            var fileModel = await _context.FileModel.FindAsync(req.Id);
+            FileModel? fileModel = await _context.FileModel.FindAsync(req.Id);
             if (fileModel == null)
             {
                 return NotFound("false");
             }
 
+            string name = HttpContext.User.Claims.Where(x => x.Subject.IsAuthenticated).FirstOrDefault().Value;
+            User usr = _context.User.Where(u => u.Name == name).FirstOrDefault();
+            if (fileModel.UserID != usr.Id)
+            {
+                return Forbid();
+            }
+
             _context.FileModel.Remove(fileModel);
-            await _context.SaveChangesAsync();
+            _context.SaveChanges();
 
             return Ok("true");
         }
@@ -104,14 +107,19 @@ namespace Server.Controllers
         [HttpPost("Download")]
         public async Task<ActionResult<Stream>> Download(DownloadReq req)
         {
-            User? usr;
-            ActionResult? res;
-            if (!IsAuthorized(req, out usr, out res))
-            {
-                return res!;
+            string name = HttpContext.User.Claims.Where(x => x.Subject.IsAuthenticated).FirstOrDefault().Value;
+            User usr = _context.User.Where(u => u.Name == name).FirstOrDefault();
+            int? flUserId = _context.FileModel.Where(fl => fl.Id == req.Id).Select(x => x.UserID).FirstOrDefault();
+            if (flUserId == null)
+            {  
+                return NotFound("false"); 
             }
-
-            return new MemoryStream(_context.FileModel.Where(fl => fl.Id == req.Id).Select(fl => _archiver.Decompress(fl.Data)).FirstOrDefault());
+            if (usr.Id != flUserId)
+            {
+                return Forbid();
+            }
+            return new MemoryStream(_context.FileModel.Where(fl => fl.Id == req.Id && fl.UserID == usr.Id).Select(fl => fl.Data/*_archiver.Decompress(fl.Data)*/).FirstOrDefault());
+            
         }
 
         private bool FileModelExists(int id)
@@ -119,58 +127,18 @@ namespace Server.Controllers
             return _context.FileModel.Any(e => e.Id == id);
         }
 
-        // TODO : Класс-сервис авторизации, которым могут пользоваться контроллдлеры (AuthController и FileModelController)
-        private bool IsAuthorized(Req req, out User? usr, out ActionResult? res) //TODO : токен дествует только некоторе время, при просрчивании просит клиента авторизоваться заново
-        {
-            usr = _context.User.Where(usr => usr.Name == req.Login).FirstOrDefault();
-
-            if (usr == null)
-            {
-                res = NotFound("User doesn`t exists");
-                return false;
-            }
-
-            byte[] f_step = Convert.FromBase64String(req.Token.Replace(' ', '+'));
-            byte[] s_step = _crypt.DecryptData(f_step, usr.PublicKey);
-            string t_step = Encoding.UTF8.GetString(s_step);
-
-            if (usr.Token != t_step)
-            {
-                res = Forbid();
-                return false;
-            }
-
-            res = null;
-            return true;
-        }
-
-        /*private bool FakeAuthorized(Req req, out User? usr, out ActionResult? res)
-        {
-            usr = _context.User.Where(usr => usr.Name == req.Login).FirstOrDefault();
-            res = null;
-            return true;
-        }*/
-
-        public class Req
-        {
-            public string Login { get; set; }
-            public string Token { get; set; }
-        }
-
-        public class DownloadReq : Req
+        public class DeleteReq
         {
             public int Id { get; set; }
         }
-
-        public class DeleteReq : Req
+        public class DownloadReq
         {
             public int Id { get; set; }
         }
-
-        public class AddReq : Req
+        public class AddReq
         {
             public string Name { get; set; }
-            public byte[] Data {  get; set; }
+            public Stream Data {  get; set; }
         }
     }
 }

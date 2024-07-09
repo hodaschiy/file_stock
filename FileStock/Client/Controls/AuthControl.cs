@@ -1,4 +1,6 @@
 ﻿using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+using NLog;
 using System;
 using System.Collections.Generic;
 using System.IO.Ports;
@@ -10,24 +12,27 @@ using System.Threading.Tasks;
 
 namespace Client.Controls
 {
-    public class AuthControl // отрефакторить спагетти
+    public class AuthControl
     {
-        private RSACryptoServiceProvider _rsa = new RSACryptoServiceProvider();
-
+        private static Logger _logger = LogManager.GetCurrentClassLogger();
         public async Task<bool> Authorize(string Login, string Password)
         {
-            Handshake(Login);
+            Handshake(Login, App.usr.clientKey.ToXmlString(false));
 
-            JsonContent jsonContent = JsonContent.Create(new { Login = Login, Password = Convert.ToBase64String(_rsa.Encrypt(Encoding.UTF8.GetBytes(Password), false)) });
+            JsonContent jsonContent = JsonContent.Create(new { Login = Login, Password = Convert.ToBase64String(App.usr.serverKey.Encrypt(Encoding.UTF8.GetBytes(Password), false)) });
 
             var response = await App.http.PostAsync("/Auth", jsonContent);//TODO обработать исключение "ключ не существует"
-            var IsAuthorized = await response.Content.ReadAsStringAsync();
+            var Token = await response.Content.ReadAsStringAsync();
 
-            if (Convert.ToBoolean(IsAuthorized))
+            if (Token != null)
             {
                 App.usr.Name = Login;
-                App.usr.Token = Convert.ToBase64String(_rsa.Encrypt(Encoding.Default.GetBytes(DateTime.UtcNow.Date.ToString()), false));
+                var f_step = Convert.FromBase64String(Token);
+                var s_step = App.usr.clientKey.Decrypt(f_step, false);
+                var t_step = App.usr.serverKey.Encrypt(s_step, false);
+                App.usr.Token = Convert.ToBase64String(t_step);
 
+                App.http.DefaultRequestHeaders.Add("Authorization", "basic " + App.usr.Name + ":" + App.usr.Token);
                 return true;
             }
             else
@@ -36,41 +41,57 @@ namespace Client.Controls
             }
         }
 
-        public async Task<bool> Register(string Login, string Password)
+        public async Task<string> Register(string Login, string Password)
         {
-            Handshake(null);
+            Handshake(null, App.usr.clientKey.ToXmlString(false));
 
-            JsonContent jsonContent = JsonContent.Create(new { Login = Login, Password = Convert.ToBase64String(_rsa.Encrypt(Encoding.UTF8.GetBytes(Password), false)), PublicKey = _rsa.ToXmlString(false) });
+            JsonContent jsonContent = JsonContent.Create(new { Login = Login, Password = Convert.ToBase64String(App.usr.serverKey.Encrypt(Encoding.UTF8.GetBytes(Password), false)), PublicKey = App.usr.serverKey.ToXmlString(false) });
 
             var response = await App.http.PostAsync("/Register", jsonContent);//TODO обработать исключение "ключ не существует"
-            var IsRegistered = await response.Content.ReadAsStringAsync();
+            var Token = await response.Content.ReadAsStringAsync();
 
-            if (Convert.ToBoolean(IsRegistered))
+            if (Token != String.Empty)
             {
-                App.usr.Name = Login;
-                App.usr.Token = Convert.ToBase64String(_rsa.Encrypt(Encoding.Default.GetBytes(DateTime.UtcNow.Date.ToString()), false));
-
-                return true;
+                try
+                {
+                    App.usr.Name = Login;
+                    App.usr.Token = Convert.ToBase64String(App.usr.serverKey.Encrypt(App.usr.clientKey.Decrypt(Convert.FromBase64String(Token), false), false));
+                }
+                catch 
+                { 
+                    return Token; 
+                }
+                App.http.DefaultRequestHeaders.Add("Authorization", "basic " + App.usr.Name + ":" + App.usr.Token);
+                return "true";
             }
             else
             {
-                return false;
+                return "Пользователь уже существует";
             }
         }
 
-        private void Handshake(string Login)
+        private void Handshake(string Login, string clientPublicKey)
         {
             string PublicKey;
             if (Login == null)
             {
-                PublicKey = App.http.GetStringAsync($"/Handshake?Login={Login}").Result;
+                JsonContent jsonContent = JsonContent.Create(new { clientPublicKey });
+                PublicKey = App.http.PostAsync($"/Handshake", jsonContent).Result.Content.ReadAsStringAsync().Result;
             }
             else 
             {
-                PublicKey = App.http.GetStringAsync($"/Handshake").Result;
+                JsonContent jsonContent = JsonContent.Create(new { Login, clientPublicKey });
+                PublicKey = App.http.PostAsync($"/Handshake", jsonContent).Result.Content.ReadAsStringAsync().Result;
             }
 
-            _rsa.FromXmlString(PublicKey);
+            _logger.Debug(PublicKey);
+            App.usr.serverKey.FromXmlString(PublicKey);
+        }
+
+        public void Exit() 
+        {
+            App.usr = new User();
+            App.http.DefaultRequestHeaders.Remove("Authorization");
         }
     }
 }

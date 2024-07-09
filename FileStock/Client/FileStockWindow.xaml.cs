@@ -49,6 +49,11 @@ namespace Client
         private async void Button_AddFile_Click(object sender, RoutedEventArgs e)
         {
             FileModel newfl = await App.fls.Add();
+            if (newfl == null || newfl.IsEmpty())
+            {
+                MessageBox.Show("Файл не добавлен");
+                return;
+            }
             LoF.Add(newfl);
         }
 
@@ -62,6 +67,14 @@ namespace Client
             {
                 LoF.Remove(LoF.Where(fl => fl.Id == Id).FirstOrDefault());
             }
+        }
+
+        private void ExitButton_Click(object sender, RoutedEventArgs e)
+        {
+            App.auth.Exit();
+            MainWindow mainWindow = new MainWindow();
+            mainWindow.Show();
+            Close();
         }
     }
 }

@@ -10,11 +10,11 @@ namespace Server.Data
 {
     public class ServerContext : DbContext
     {
-        public ServerContext (DbContextOptions<ServerContext> options)
+        public ServerContext(DbContextOptions<ServerContext> options)
             : base(options)
         {
         }
-        public DbSet<User> User { get; set; } = default!;
-        public DbSet<FileModel> FileModel { get; set; } = default!;
+        public virtual DbSet<User> User { get; set; } = default!;
+        public virtual DbSet<FileModel> FileModel { get; set; } = default!;
     }
 }

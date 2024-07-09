@@ -12,7 +12,7 @@ namespace Server.Models
         public string PublicKey { get; set; }
 
         public User() { }
-        public User(ICryptService cryptService) { PublicKey = cryptService.GetKey(); }
+        public User(ICryptService cryptService, string userPublicKey) { PublicKey = cryptService.GetKey(userPublicKey); }
     }
 
     public class UserAlreadyRegister : Exception { }

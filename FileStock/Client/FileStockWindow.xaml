@@ -53,5 +53,6 @@
                 </ListView>
             </ScrollViewer>
         </StackPanel>
+        <Button x:Name="MyButton" Content="Выход" Grid.Row="4" Click="ExitButton_Click"/>
     </Grid>
 </Window>

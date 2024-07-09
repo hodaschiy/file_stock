@@ -11,7 +11,7 @@ using Server.Data;
 namespace Server.Migrations
 {
     [DbContext(typeof(ServerContext))]
-    [Migration("20240626163015_Init")]
+    [Migration("20240709183033_Init")]
     partial class Init
     {
         /// <inheritdoc />
@@ -31,6 +31,9 @@ namespace Server.Migrations
                         .HasColumnType("integer");
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("CompressAlg")
+                        .HasColumnType("integer");
 
                     b.Property<byte[]>("Data")
                         .IsRequired()

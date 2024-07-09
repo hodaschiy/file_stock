@@ -29,6 +29,9 @@ namespace Server.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
+                    b.Property<int>("CompressAlg")
+                        .HasColumnType("integer");
+
                     b.Property<byte[]>("Data")
                         .IsRequired()
                         .HasColumnType("bytea");

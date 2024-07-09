@@ -19,6 +19,7 @@ using System.Windows.Media.Animation;
 using System.Security.Cryptography;
 using static System.Net.WebRequestMethods;
 using Newtonsoft.Json;
+using NLog;
 
 namespace Client
 {
@@ -63,14 +64,12 @@ namespace Client
             {
                 ThisBox.Content = "Пользователь не найден, возможно неверный логин и/или пароль";
             }
-
-
-
         }
 
         private async void ButtonRegister_Click(object sender, RoutedEventArgs e)// TODO логику handshake + авторизации + регистрации вынести в отдельный класс и дергать его
         {
-            if (await App.auth.Register(Login.Text, Password.Password))
+            string result = await App.auth.Register(Login.Text, Password.Password);
+            if (result == "true")
             {
                 FileStockWindow fileStockWindow = new FileStockWindow();
                 fileStockWindow.Show();
@@ -79,7 +78,7 @@ namespace Client
             }
             else
             {
-                ThisBox.Content = "Пользователь уже существует, попробуйте авторизоваться";
+                ThisBox.Content = result;
             }
         }
     }

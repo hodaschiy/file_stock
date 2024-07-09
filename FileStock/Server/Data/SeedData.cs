@@ -6,6 +6,7 @@ using System;
 using System.Text;
 using System.Linq;
 using System.Xml.Linq;
+using System.Security.Cryptography;
 
 namespace Server.Models;
 
@@ -24,7 +25,7 @@ public static class SeedData
             return;   // DB has been seeded
         }
         context.User.AddRange(
-            new User(crypt)
+            new User(crypt, new RSACryptoServiceProvider().ToXmlString(false))
             {
                 Name = "admin"
             }

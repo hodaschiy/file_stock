@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using Server.Services;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Xml.Linq;
@@ -16,6 +17,7 @@ namespace Server.Models
         public string Size { get => GetSize(); }
         [NotMapped]
         public string FileExt { get => GetExt(); }
+        public CompressAlg CompressAlg { get; set; } = CompressAlg.None;
         public int UserID { get; set; }
         [ForeignKey("UserID")]
         public virtual User User { get; set; }
@@ -67,5 +69,6 @@ namespace Server.Models
         public string Name { get; set; }
         public string Size { get; set; }
         public string FileExt { get; set; }
+        public CompressAlg CompressAlg { get; set; }
     }
 }
