@@ -46,14 +46,14 @@ namespace Server.Tests
                     Id = 1,
                     Data = Encoding.UTF8.GetBytes("Сегодня хорошая погода"),
                     Name = "fl1.str",
-                    UserID = 1
+                    UserId = 1
                 },
                 new FileModel()
                 {
                     Id = 2,
                     Data = Encoding.UTF8.GetBytes("Погода и правда не плохая"),
                     Name = "fl2.str",
-                    UserID = 1
+                    UserId = 1
                 }
             }.AsQueryable();
 

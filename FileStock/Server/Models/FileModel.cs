@@ -8,19 +8,25 @@ namespace Server.Models
 {
     public class FileModel
     {
-        public static readonly FileModel Empty = new();
-
         public int Id {  get; set; } 
         public byte[] Data { get; set; } = Enumerable.Empty<byte>().ToArray();
         public string Name { get; set; } = String.Empty;
-        [NotMapped]
-        public string Size { get => GetSize(); }
+        public CompressAlg CompressAlg { get; set; } = CompressAlg.None;
+        public string? Size { get => GetSize(); }
         [NotMapped]
         public string FileExt { get => GetExt(); }
-        public CompressAlg CompressAlg { get; set; } = CompressAlg.None;
-        public int UserID { get; set; }
-        [ForeignKey("UserID")]
+        public int UserId { get; set; }
+        [ForeignKey("UserId")]
         public virtual User User { get; set; }
+        public int? OriginalFileId { get; set; }
+        [ForeignKey("OriginalFileId")]
+        public virtual FileModel? OriginalFile { get; set; }
+
+
+
+        public static readonly FileModel Empty = new();
+
+
 
         private string GetExt()
         {
@@ -29,7 +35,7 @@ namespace Server.Models
             else 
                 return Name[Name.IndexOf('.')..];
         }
-        private string GetSize() {
+        public string GetSize() {
             int i = 0;
             float len = Data.Length;
             while (len > 512 & i <= 4)
@@ -70,5 +76,7 @@ namespace Server.Models
         public string Size { get; set; }
         public string FileExt { get; set; }
         public CompressAlg CompressAlg { get; set; }
+        public int? OriginalFileId { get; set; }
+        public string? Holder { get; set; }
     }
 }

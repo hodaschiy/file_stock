@@ -36,23 +36,35 @@ namespace Server.Migrations
                     Data = table.Column<byte[]>(type: "bytea", nullable: false),
                     Name = table.Column<string>(type: "text", nullable: false),
                     CompressAlg = table.Column<int>(type: "integer", nullable: false),
-                    UserID = table.Column<int>(type: "integer", nullable: false)
+                    Size = table.Column<string>(type: "text", nullable: true),
+                    UserId = table.Column<int>(type: "integer", nullable: false),
+                    OriginalFileId = table.Column<int>(type: "integer", nullable: true)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_FileModel", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_FileModel_User_UserID",
-                        column: x => x.UserID,
+                        name: "FK_FileModel_FileModel_OriginalFileId",
+                        column: x => x.OriginalFileId,
+                        principalTable: "FileModel",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_FileModel_User_UserId",
+                        column: x => x.UserId,
                         principalTable: "User",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateIndex(
-                name: "IX_FileModel_UserID",
+                name: "IX_FileModel_OriginalFileId",
                 table: "FileModel",
-                column: "UserID");
+                column: "OriginalFileId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_FileModel_UserId",
+                table: "FileModel",
+                column: "UserId");
         }
 
         /// <inheritdoc />

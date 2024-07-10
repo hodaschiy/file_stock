@@ -13,6 +13,10 @@ namespace Client
         public string Size { get; set; }
         public string FileExt { get; set; }
         public CompressAlg CompressAlg { get; set; }
+        public Nullable<int> OriginalFileId { get; set; }
+        public string Holder {  get; set; }
+
+
 
         public static FileModel Empty = new FileModel() { Id = 0, FileExt = null, Name = String.Empty, Size = null };
         public bool IsEmpty()

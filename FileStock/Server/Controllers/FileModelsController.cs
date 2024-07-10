@@ -36,14 +36,14 @@ namespace Server.Controllers
             //     _archiver = archiver;
             _logger = logger;
         }
-        
+
         // GET: /FileModels/Get
         [HttpGet("Get")]
         public async Task<ActionResult<List<FileInfoModel>>> GetFileModel()
         {
             string name = HttpContext.User.Claims.Where(x => x.Subject.IsAuthenticated).FirstOrDefault().Value;
             User usr = _context.User.Where(u => u.Name == name).FirstOrDefault();
-            var fileModelList = _context.FileModel.Where(fl => fl.UserID == usr.Id).Select(fl => new FileInfoModel { Id = fl.Id, Name = fl.Name, Size = fl.Size, FileExt = fl.FileExt, CompressAlg = fl.CompressAlg}).ToList();
+            var fileModelList = _context.FileModel.Where(fl => fl.UserId == usr.Id).Include(fl => fl.OriginalFile).Include(x => x.OriginalFile.User).Select(fl => new FileInfoModel { Id = fl.Id, Name = fl.Name, Size = (fl.OriginalFileId == null ? fl.Size : fl.OriginalFile.Size), FileExt = fl.FileExt, CompressAlg = fl.CompressAlg, OriginalFileId = fl.OriginalFileId, Holder = fl.OriginalFile.User.Name }).ToList();
 
             if (fileModelList == null)
             {
@@ -61,8 +61,8 @@ namespace Server.Controllers
             IFormFile req = HttpContext.Request.Form.Files["First"];
             string name = HttpContext.User.Claims.Where(x => x.Subject.IsAuthenticated).FirstOrDefault().Value;
             User usr = _context.User.Where(u => u.Name == name).FirstOrDefault();
-            
-            if (_context.FileModel.Any(x => x.Name == req.FileName && x.UserID == usr.Id))
+
+            if (_context.FileModel.Any(x => x.Name == req.FileName && x.UserId == usr.Id))
             {
                 return BadRequest("File almost exists");
             }
@@ -76,7 +76,7 @@ namespace Server.Controllers
             _context.FileModel.Add(new FileModel() { Data = data, Name = req.FileName, User = usr, CompressAlg = compressAlg });
             _context.SaveChanges();
 
-            FileModel newfl = _context.FileModel.Where(x => x.UserID == usr.Id && x.Name == req.FileName).OrderByDescending(x => x.Id).First(); //Id создается в базе данных, поэтому надо сходить
+            FileModel newfl = _context.FileModel.Where(x => x.UserId == usr.Id && x.Name == req.FileName).OrderByDescending(x => x.Id).First(); //Id создается в базе данных, поэтому надо сходить
 
             return Ok(newfl);
         }
@@ -93,7 +93,7 @@ namespace Server.Controllers
 
             string name = HttpContext.User.Claims.Where(x => x.Subject.IsAuthenticated).FirstOrDefault().Value;
             User usr = _context.User.Where(u => u.Name == name).FirstOrDefault();
-            if (fileModel.UserID != usr.Id)
+            if (fileModel.UserId != usr.Id)
             {
                 return Forbid();
             }
@@ -105,21 +105,43 @@ namespace Server.Controllers
         }
 
         [HttpPost("Download")]
-        public async Task<ActionResult<Stream>> Download(DownloadReq req)
+        public async Task<IActionResult> Download(DownloadReq req)
         {
             string name = HttpContext.User.Claims.Where(x => x.Subject.IsAuthenticated).FirstOrDefault().Value;
             User usr = _context.User.Where(u => u.Name == name).FirstOrDefault();
-            int? flUserId = _context.FileModel.Where(fl => fl.Id == req.Id).Select(x => x.UserID).FirstOrDefault();
+            int? flUserId = _context.FileModel.Where(fl => fl.Id == req.Id).Select(x => x.UserId).FirstOrDefault();
             if (flUserId == null)
-            {  
-                return NotFound("false"); 
+            {
+                return NotFound("false");
             }
             if (usr.Id != flUserId)
             {
                 return Forbid();
             }
-            return new MemoryStream(_context.FileModel.Where(fl => fl.Id == req.Id && fl.UserID == usr.Id).Select(fl => fl.Data/*_archiver.Decompress(fl.Data)*/).FirstOrDefault());
-            
+            Tuple<int, int?> fnd = _context.FileModel.Where(fl => fl.Id == req.Id && fl.UserId == usr.Id).Select(fl => new Tuple<int, int?>(fl.Id, fl.OriginalFileId)).FirstOrDefault();
+            if (fnd.Item2 == null)
+                return Ok(new MemoryStream(_context.FileModel.Where(fl => fl.Id == fnd.Item1).Select(fl => fl.Data/*_archiver.Decompress(fl.Data)*/).FirstOrDefault()));
+            else
+                return Ok(new MemoryStream(_context.FileModel.Where(fl => fl.Id == fnd.Item2).Select(fl => fl.Data/*_archiver.Decompress(fl.Data)*/).FirstOrDefault()));
+
+        }
+
+        [HttpPost("Share")]
+        public IActionResult Share(ShareRequest req)
+        {
+            string name = HttpContext.User.Claims.Where(x => x.Subject.IsAuthenticated).FirstOrDefault().Value;
+            User usr = _context.User.Where(u => u.Name == name).FirstOrDefault();
+            User targUsr = _context.User.Where(u => u.Id == req.UserId).FirstOrDefault();
+            if (targUsr == null)
+            {
+                return NotFound("Chosen user not exists");
+            }
+            FileModel added =  _context.FileModel.Where(fl => fl.Id == req.FileId).Select(fl => new FileModel() { Name = fl.Name, CompressAlg = fl.CompressAlg, OriginalFileId = req.FileId, UserId = targUsr.Id}).First();
+
+            _context.FileModel.Add(added);
+            _context.SaveChanges();
+
+            return Ok(true);
         }
 
         private bool FileModelExists(int id)
@@ -127,6 +149,11 @@ namespace Server.Controllers
             return _context.FileModel.Any(e => e.Id == id);
         }
 
+        public class ShareRequest
+        {
+            public int UserId { get; set; }
+            public int FileId { get; set; }
+        }
         public class DeleteReq
         {
             public int Id { get; set; }

@@ -69,12 +69,20 @@ namespace Client
             }
         }
 
-        private void ExitButton_Click(object sender, RoutedEventArgs e)
+        private void Button_Exit_Click(object sender, RoutedEventArgs e)
         {
             App.auth.Exit();
             MainWindow mainWindow = new MainWindow();
             mainWindow.Show();
             Close();
+        }
+
+        private void Button_Share_Click(object sender, RoutedEventArgs e)
+        {
+            var btn = (Button)sender;
+            int Id = Convert.ToInt32(btn.DataContext);
+            WindowShare windowShare = new WindowShare(Id);
+            windowShare.ShowDialog();
         }
     }
 }

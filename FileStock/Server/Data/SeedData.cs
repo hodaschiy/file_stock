@@ -42,13 +42,13 @@ public static class SeedData
             new FileModel()
             {
                 Name = "test.txt",
-                UserID = userID,
+                UserId = userID,
                 Data = File.ReadAllBytes(@"D:\MyProjects\test.txt")
             },
             new FileModel()
             {
                 Name = "test.png",
-                UserID = userID,
+                UserId = userID,
                 Data = File.ReadAllBytes(@"D:\MyProjects\test.png")
             });
         context.SaveChanges();

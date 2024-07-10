@@ -34,6 +34,7 @@
                             <GridViewColumn DisplayMemberBinding="{Binding Name}" Width="NaN">Название</GridViewColumn>
                             <GridViewColumn DisplayMemberBinding="{Binding Size}" Width="NaN">Размер</GridViewColumn>
                             <GridViewColumn DisplayMemberBinding="{Binding FileExt}" Width="NaN">Расширение</GridViewColumn>
+                            <GridViewColumn DisplayMemberBinding="{Binding Holder}" Width="NaN">Владелец</GridViewColumn>
                             <GridViewColumn Width="NaN">
                                 <GridViewColumn.CellTemplate>
                                     <DataTemplate>
@@ -48,11 +49,18 @@
                                     </DataTemplate>
                                 </GridViewColumn.CellTemplate>
                             </GridViewColumn>
+                            <GridViewColumn Width="NaN">
+                                <GridViewColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <Button Name="Share" Click="Button_Share_Click" Content="Поделиться" DataContext="{Binding Path=Id}"/>
+                                    </DataTemplate>
+                                </GridViewColumn.CellTemplate>
+                            </GridViewColumn>
                         </GridView>
                     </ListView.View>
                 </ListView>
             </ScrollViewer>
         </StackPanel>
-        <Button x:Name="MyButton" Content="Выход" Grid.Row="4" Click="ExitButton_Click"/>
+        <Button x:Name="MyButton" Content="Выход" Grid.Row="4" Click="Button_Exit_Click"/>
     </Grid>
 </Window>

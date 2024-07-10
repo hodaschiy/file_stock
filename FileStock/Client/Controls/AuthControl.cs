@@ -45,7 +45,7 @@ namespace Client.Controls
         {
             Handshake(null, App.usr.clientKey.ToXmlString(false));
 
-            JsonContent jsonContent = JsonContent.Create(new { Login = Login, Password = Convert.ToBase64String(App.usr.serverKey.Encrypt(Encoding.UTF8.GetBytes(Password), false)), PublicKey = App.usr.serverKey.ToXmlString(false) });
+            JsonContent jsonContent = JsonContent.Create(new { Login = Login, Password = Convert.ToBase64String(App.usr.serverKey.Encrypt(Encoding.UTF8.GetBytes(Password), false)), PublicKey = App.usr.clientKey.ToXmlString(false) });
 
             var response = await App.http.PostAsync("/Register", jsonContent);//TODO обработать исключение "ключ не существует"
             var Token = await response.Content.ReadAsStringAsync();
@@ -84,7 +84,6 @@ namespace Client.Controls
                 PublicKey = App.http.PostAsync($"/Handshake", jsonContent).Result.Content.ReadAsStringAsync().Result;
             }
 
-            _logger.Debug(PublicKey);
             App.usr.serverKey.FromXmlString(PublicKey);
         }
 

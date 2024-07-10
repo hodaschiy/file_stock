@@ -21,12 +21,25 @@ namespace Client.Controls
         {
             try
             {
-                return App.http.GetFromJsonAsAsyncEnumerable<FileModel>($"/FileModels/Get?Login={App.usr.Name}&Token={App.usr.Token}").ToListAsync<FileModel>().Result;
+                return App.http.GetFromJsonAsAsyncEnumerable<FileModel>($"/FileModels/Get").ToListAsync<FileModel>().Result;
             }
             catch (Exception ex)
             {
                 _logger.Error(ex);
                 return new List<FileModel>();
+            }
+
+        }
+        public List<Tuple<int, string>> GetUsersList()
+        {
+            try
+            {
+                return App.http.GetFromJsonAsAsyncEnumerable<Tuple<int, string>>($"/GetUsersList").ToListAsync<Tuple<int, string>>().Result;
+            }
+            catch (Exception ex)
+            {
+                _logger.Error(ex);
+                return new List<Tuple<int, string>>();
             }
 
         }
@@ -43,7 +56,7 @@ namespace Client.Controls
                 {
                     CompressAlg alg = CompressAlg.GZip;
                     _logger.Info($"Start add file: {dlg.SafeFileName}");
-                    StreamContent streamContent = new StreamContent(new MemoryStream(App.archiver.Compress(File.OpenRead(dlg.FileName), alg)));
+                    StreamContent streamContent = new StreamContent(App.archiver.Compress(File.OpenRead(dlg.FileName), alg));
                     StringContent stringContent = new StringContent(((int)alg).ToString());
                     MultipartFormDataContent form = new MultipartFormDataContent();
                     form.Add(streamContent, "First", dlg.SafeFileName);
@@ -81,6 +94,8 @@ namespace Client.Controls
         {
             var dialog = new System.Windows.Forms.FolderBrowserDialog();
             
+            _logger.Info($"Downloading File name : {savingFile.Name}; File Id : {savingFile.Id}");
+
             System.Windows.Forms.DialogResult result = dialog.ShowDialog();
             string path = dialog.SelectedPath;
 
@@ -90,9 +105,9 @@ namespace Client.Controls
                 {
                     JsonContent jsonContent = JsonContent.Create(new { Id = savingFile.Id });
                     var res = await App.http.PostAsync("/FileModels/Download", jsonContent);
-                    byte[] data = App.archiver.Decompress(await res.Content.ReadAsStreamAsync(), savingFile.CompressAlg);
-                    File.WriteAllBytes(path + '/' + savingFile.Name, data);
-
+                    FileStream fileStream = File.Create(path + '/' + savingFile.Name);
+                    App.archiver.Decompress(await res.Content.ReadAsStreamAsync(), savingFile.CompressAlg).CopyTo(fileStream);
+                    fileStream.Dispose();
                     return true;
                 }
                 catch (Exception ex) 
@@ -103,6 +118,19 @@ namespace Client.Controls
             }
             else 
             {
+                return false;
+            }
+        }
+        public bool Share(int fileId, int userId)
+        {
+            JsonContent content = JsonContent.Create(new { userId, fileId });
+            try
+            {
+                return App.http.PostAsync($"/FileModels/Share", content).Result.Content.ReadFromJsonAsync<bool>().Result;
+            }
+            catch (JsonException ex)
+            {
+                _logger.Error(ex);
                 return false;
             }
         }

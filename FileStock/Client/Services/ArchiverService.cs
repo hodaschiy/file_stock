@@ -7,29 +7,26 @@ namespace Client
 {
     public interface IArchiverService
     {
-        byte[] Compress(Stream data, CompressAlg ca);
-        byte[] Decompress(Stream data, CompressAlg ca);
+        MemoryStream Compress(Stream data, CompressAlg ca);
+        MemoryStream Decompress(Stream data, CompressAlg ca);
     }
     
     public class ArchiverService : IArchiverService
     {
         private Logger _logger = LogManager.GetCurrentClassLogger();
-        public byte[] Compress(Stream data, CompressAlg ca)
+        public MemoryStream Compress(Stream data, CompressAlg ca)
         {
-            byte[] output;
             MemoryStream outstream = new MemoryStream();
             DateTime dateTime = DateTime.Now;
             switch (ca)
             {
                 case CompressAlg.GZip:
-                    using (GZipStream gZipStream = new GZipStream(outstream, CompressionLevel.Optimal))
+                    using (GZipStream gZipStream = new GZipStream(outstream, CompressionLevel.Optimal, true))
                         data.CopyTo(gZipStream); 
-                    output = outstream.ToArray();
                     break;
                 case CompressAlg.Deflate:
-                    using (DeflateStream deflateStream = new DeflateStream(outstream, CompressionLevel.Optimal))
+                    using (DeflateStream deflateStream = new DeflateStream(outstream, CompressionLevel.Optimal, true))
                         data.CopyTo(deflateStream);
-                    output = outstream.ToArray();
                     break;
                 /*case CompressAlg.Brotli:
                     var brotliStream = new BrotliStream(data, CompressionLevel.Optimal);
@@ -43,29 +40,26 @@ namespace Client
                     break;*/
                 default:
                     data.CopyTo(outstream);
-                    output = outstream.ToArray();
                     break;
             }
             _logger.Info("Время сжатия: " + (DateTime.Now - dateTime).TotalMilliseconds.ToString()+" миллисекунд");
-            return output;
+            outstream.Seek(0, SeekOrigin.Begin);
+            return outstream;
         }
 
-        public byte[] Decompress(Stream data, CompressAlg ca)
+        public MemoryStream Decompress(Stream data, CompressAlg ca)
         {
             MemoryStream outstream = new MemoryStream();
-            byte[] output;
             DateTime dateTime = DateTime.Now;
             switch (ca)
             {
                 case CompressAlg.GZip:
                     using (GZipStream gZipStream = new GZipStream(data, CompressionMode.Decompress))
                         gZipStream.CopyTo(outstream);
-                    output = outstream.ToArray();
                     break;
                 case CompressAlg.Deflate:
                     using (DeflateStream deflateStream = new DeflateStream(data, CompressionMode.Decompress))
                         deflateStream.CopyTo(outstream);
-                    output = outstream.ToArray();
                     break;
                 /*case CompressAlg.Brotli:
                     output = new byte[1024];
@@ -75,11 +69,11 @@ namespace Client
                     break;*/
                 default:
                     data.CopyTo(outstream);
-                    output = outstream.ToArray();
                     break;
             }
-            _logger.Info("Время распаковки: " + (dateTime - DateTime.Now).TotalSeconds.ToString());
-            return output;
+            _logger.Info("Время распаковки: " + (DateTime.Now - dateTime).TotalSeconds.ToString()+" миллисекунд");
+            outstream.Seek(0, SeekOrigin.Begin);
+            return outstream;
         }
     }
 
