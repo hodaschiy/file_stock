@@ -47,7 +47,8 @@ namespace Server.Migrations
                         name: "FK_FileModel_FileModel_OriginalFileId",
                         column: x => x.OriginalFileId,
                         principalTable: "FileModel",
-                        principalColumn: "Id");
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
                         name: "FK_FileModel_User_UserId",
                         column: x => x.UserId,
